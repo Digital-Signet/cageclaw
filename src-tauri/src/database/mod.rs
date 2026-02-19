@@ -128,6 +128,22 @@ impl Database {
         Ok(events)
     }
 
+    /// Get distinct blocked hosts since a given timestamp (for toast notifications).
+    pub fn get_recent_blocked_hosts(
+        &self,
+        since: &str,
+    ) -> Result<Vec<String>, rusqlite::Error> {
+        let mut stmt = self.conn.prepare(
+            "SELECT DISTINCT host FROM network_events
+             WHERE action = 'blocked' AND timestamp > ?1
+             ORDER BY timestamp DESC",
+        )?;
+        let hosts = stmt
+            .query_map(params![since], |row| row.get(0))?
+            .collect::<Result<Vec<String>, _>>()?;
+        Ok(hosts)
+    }
+
     pub fn get_event_counts(&self) -> Result<EventCounts, rusqlite::Error> {
         let total: i64 = self
             .conn

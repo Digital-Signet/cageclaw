@@ -5,6 +5,7 @@ import FilesView from "./views/FilesView";
 import SettingsView from "./views/SettingsView";
 import AgentView from "./views/AgentView";
 import Sidebar from "./components/Sidebar";
+import BlockedToast from "./components/BlockedToast";
 
 type View = "dashboard" | "agent" | "network" | "files" | "settings";
 
@@ -32,6 +33,7 @@ function App() {
       <main style={{ flex: 1, overflow: "auto", padding: "24px" }}>
         {renderView()}
       </main>
+      <BlockedToast onNavigate={(v) => setActiveView(v as View)} />
     </div>
   );
 }

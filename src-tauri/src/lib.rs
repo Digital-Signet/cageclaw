@@ -59,6 +59,7 @@ pub fn run() {
             commands::restart_container,
             commands::get_container_stats,
             commands::get_network_events,
+            commands::get_recent_blocked,
             commands::get_config,
             commands::update_config,
             commands::get_gateway_url,

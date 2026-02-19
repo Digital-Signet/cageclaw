@@ -68,6 +68,18 @@ pub async fn get_network_events(
         .map_err(|e| e.to_string())
 }
 
+/// Returns distinct blocked hosts since a given ISO timestamp.
+/// Used by the frontend toast notification system.
+#[tauri::command]
+pub async fn get_recent_blocked(
+    state: State<'_, AppState>,
+    since: String,
+) -> Result<Vec<String>, String> {
+    let db = state.db.lock().await;
+    db.get_recent_blocked_hosts(&since)
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub async fn get_config() -> Result<AppConfig, String> {
     Ok(AppConfig::load())
