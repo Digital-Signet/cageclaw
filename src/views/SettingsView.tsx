@@ -1,14 +1,65 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
+interface DomainRule {
+  pattern: string;
+  allowed: boolean;
+}
+
 interface AppConfig {
+  setup_completed: boolean;
   openclaw_image: string | null;
   openclaw_tag: string | null;
   file_mounts: { host_path: string; container_path: string; read_only: boolean; blocked: boolean }[];
-  allowed_domains: { pattern: string; allowed: boolean }[];
+  allowed_domains: DomainRule[];
   env_vars: [string, string][];
   resource_limits: { memory_mb: number | null; cpu_cores: number | null };
 }
+
+const DOMAIN_PRESETS: { name: string; description: string; domains: string[] }[] = [
+  {
+    name: "AI APIs",
+    description: "Anthropic, OpenAI, Google AI",
+    domains: [
+      "api.anthropic.com",
+      "api.openai.com",
+      "generativelanguage.googleapis.com",
+    ],
+  },
+  {
+    name: "Web Dev",
+    description: "npm, CDNs, bundler resources",
+    domains: [
+      "registry.npmjs.org",
+      "cdn.jsdelivr.net",
+      "cdnjs.cloudflare.com",
+      "unpkg.com",
+      "esm.sh",
+    ],
+  },
+  {
+    name: "Python / ML",
+    description: "PyPI, Hugging Face, Conda",
+    domains: [
+      "pypi.org",
+      "files.pythonhosted.org",
+      "huggingface.co",
+      "*.huggingface.co",
+      "conda.anaconda.org",
+    ],
+  },
+  {
+    name: "GitHub",
+    description: "GitHub API, raw content, packages",
+    domains: [
+      "api.github.com",
+      "github.com",
+      "raw.githubusercontent.com",
+      "objects.githubusercontent.com",
+      "npm.pkg.github.com",
+    ],
+  },
+];
 
 function SettingsView() {
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -205,6 +256,50 @@ function SettingsView() {
         <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "var(--text-secondary)" }}>
           Allowed Domains (default-deny)
         </h3>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+          {DOMAIN_PRESETS.map((preset) => {
+            const existing = config.allowed_domains.map((d) => d.pattern);
+            const allPresent = preset.domains.every((d) => existing.includes(d));
+            return (
+              <button
+                key={preset.name}
+                title={preset.description}
+                onClick={() => {
+                  if (allPresent) {
+                    setConfig({
+                      ...config,
+                      allowed_domains: config.allowed_domains.filter(
+                        (d) => !preset.domains.includes(d.pattern)
+                      ),
+                    });
+                  } else {
+                    const toAdd = preset.domains
+                      .filter((d) => !existing.includes(d))
+                      .map((d) => ({ pattern: d, allowed: true }));
+                    setConfig({
+                      ...config,
+                      allowed_domains: [...config.allowed_domains, ...toAdd],
+                    });
+                  }
+                }}
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: "var(--radius)",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: allPresent ? "rgba(79, 143, 247, 0.15)" : "var(--bg-primary)",
+                  color: allPresent ? "var(--accent)" : "var(--text-secondary)",
+                  border: allPresent
+                    ? "1px solid rgba(79, 143, 247, 0.4)"
+                    : "1px solid var(--border)",
+                  transition: "all 0.15s",
+                }}
+              >
+                {allPresent ? "\u2713 " : "+ "}{preset.name}
+              </button>
+            );
+          })}
+        </div>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <input
             type="text"
