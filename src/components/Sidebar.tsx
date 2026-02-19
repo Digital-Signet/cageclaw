@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import logo from "../assets/logo.png";
 
 type View = "dashboard" | "agent" | "network" | "files" | "settings";
@@ -15,7 +17,44 @@ const navItems: { id: View; label: string; icon: string }[] = [
   { id: "settings", label: "Settings", icon: "\u2699" },
 ];
 
+type ContainerStatus = "running" | "stopped" | "starting" | "notcreated" | { error: string };
+
+const STATUS_DISPLAY: Record<string, { color: string; label: string }> = {
+  running: { color: "var(--success)", label: "Running" },
+  stopped: { color: "var(--text-secondary)", label: "Stopped" },
+  starting: { color: "var(--warning)", label: "Starting" },
+  notcreated: { color: "var(--text-secondary)", label: "Not created" },
+};
+
 function Sidebar({ activeView, onNavigate }: SidebarProps) {
+  const [dockerOk, setDockerOk] = useState<boolean | null>(null);
+  const [containerStatus, setContainerStatus] = useState<string>("notcreated");
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        await invoke("detect_runtime");
+        setDockerOk(true);
+      } catch {
+        setDockerOk(false);
+      }
+      try {
+        const s = await invoke<ContainerStatus>("get_container_status");
+        setContainerStatus(typeof s === "string" ? s : "error");
+      } catch {
+        setContainerStatus("notcreated");
+      }
+    };
+    check();
+    const interval = setInterval(check, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const display = STATUS_DISPLAY[containerStatus] ?? {
+    color: "var(--danger)",
+    label: "Error",
+  };
+
   return (
     <nav
       style={{
@@ -82,8 +121,44 @@ function Sidebar({ activeView, onNavigate }: SidebarProps) {
 
       <div
         style={{
-          padding: "12px 16px",
-          fontSize: 12,
+          padding: "8px 16px",
+          margin: "0 12px 8px",
+          background: "var(--bg-card)",
+          borderRadius: "var(--radius)",
+          border: "1px solid var(--border)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: 12,
+          }}
+        >
+          <span
+            style={{
+              display: "inline-block",
+              width: 7,
+              height: 7,
+              borderRadius: "50%",
+              background: dockerOk === false ? "var(--danger)" : display.color,
+              boxShadow:
+                containerStatus === "running"
+                  ? `0 0 6px ${display.color}`
+                  : "none",
+            }}
+          />
+          <span style={{ color: "var(--text-secondary)" }}>
+            {dockerOk === false ? "Docker offline" : display.label}
+          </span>
+        </div>
+      </div>
+
+      <div
+        style={{
+          padding: "4px 16px",
+          fontSize: 11,
           color: "var(--text-secondary)",
         }}
       >
