@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+src-tauri/target/
+
+# Tauri auto-generated schemas (regenerated on build)
+src-tauri/gen/schemas/
+
+# Environment / secrets
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Working files (icon generation intermediates)
+app-icon.png
+src/assets/icon-trimmed.png
+
+# Logs
+*.log

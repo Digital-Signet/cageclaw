@@ -1,0 +1,33 @@
+[package]
+name = "cageclaw"
+version = "0.1.0"
+description = "Security wrapper for OpenClaw"
+authors = ["CageClaw"]
+edition = "2021"
+
+[lib]
+name = "cageclaw_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+bollard = "0.18"
+futures-util = "0.3"
+anyhow = "1"
+rusqlite = { version = "0.34", features = ["bundled"] }
+toml = "0.8"
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+dirs = "6"
+hyper = { version = "1", features = ["server", "client", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+bytes = "1"
+rand = "0.9"
