@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 function AgentView() {
   const [gatewayUrl, setGatewayUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [allowedDomains, setAllowedDomains] = useState<string[]>([]);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const loadUrl = async () => {
     try {
@@ -27,6 +28,17 @@ function AgentView() {
     const handler = (e: Event) => {
       const host = (e as CustomEvent).detail as string;
       setAllowedDomains((prev) => [host, ...prev.filter((d) => d !== host)]);
+
+      // Send message into the OpenClaw chat via the injected bridge script
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          {
+            type: "cageclaw-notify",
+            message: `The domain ${host} has been unblocked and is now accessible. Please retry your previous request to ${host}.`,
+          },
+          "*"
+        );
+      }
     };
     window.addEventListener("domain-allowed", handler);
     return () => window.removeEventListener("domain-allowed", handler);
@@ -121,7 +133,7 @@ function AgentView() {
                 &#10003; {host}
               </span>
               <span style={{ color: "var(--text-secondary)" }}>
-                now allowed — tell the agent to retry
+                allowed — notifying agent
               </span>
               <button
                 onClick={() => dismissAllowed(host)}
@@ -149,6 +161,7 @@ function AgentView() {
         }}
       >
         <iframe
+          ref={iframeRef}
           src={gatewayUrl}
           style={{
             width: "100%",

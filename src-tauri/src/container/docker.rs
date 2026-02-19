@@ -21,6 +21,25 @@ const NETWORK_NAME: &str = "cageclaw-isolated";
 const DEFAULT_IMAGE: &str = "alpine/openclaw";
 const DEFAULT_TAG: &str = "latest";
 
+/// JS bridge injected into the OpenClaw UI HTML so the parent CageClaw
+/// window can send chat messages via postMessage (used by "Allow" toast).
+const BRIDGE_SCRIPT: &str = concat!(
+    "window.addEventListener('message',function(e){",
+    "if(!e.data||e.data.type!=='cageclaw-notify')return;",
+    "var m=e.data.message;",
+    "var t=document.querySelector('textarea')||document.querySelector('input[type=text]');",
+    "if(!t)return;",
+    "var D=t.tagName==='TEXTAREA'?HTMLTextAreaElement:HTMLInputElement;",
+    "var s=Object.getOwnPropertyDescriptor(D.prototype,'value').set;",
+    "s.call(t,m);",
+    "t.dispatchEvent(new Event('input',{bubbles:true}));",
+    "t.dispatchEvent(new Event('change',{bubbles:true}));",
+    "setTimeout(function(){",
+    "t.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,bubbles:true}));",
+    "},100)",
+    "});",
+);
+
 pub struct DockerRuntime {
     client: Docker,
 }
@@ -117,7 +136,13 @@ impl DockerRuntime {
                 "delete h['x-frame-options'];",
                 "if(h['content-security-policy'])h['content-security-policy']=",
                 "h['content-security-policy'].replace(/frame-ancestors[^;]*(;|$)/g,'');",
-                "r.writeHead(pr.statusCode,h);pr.pipe(r);",
+                "var ct=(h['content-type']||'');",
+                "if(ct.includes('text/html')){{",
+                "delete h['content-length'];",
+                "r.writeHead(pr.statusCode,h);",
+                "var b=[];pr.on('data',function(c){{b.push(c)}});",
+                "pr.on('end',function(){{r.end(Buffer.concat(b).toString()+'<script>'+process.env.CB+'</script>')}});",
+                "}}else{{r.writeHead(pr.statusCode,h);pr.pipe(r)}}",
                 "}});",
                 "p.on('error',e=>{{r.writeHead(502);r.end()}});",
                 "q.pipe(p);",
@@ -155,6 +180,7 @@ impl DockerRuntime {
                         "-e".to_string(),
                         sidecar_cmd,
                     ]),
+                    env: Some(vec![format!("CB={}", BRIDGE_SCRIPT)]),
                     exposed_ports: Some({
                         let mut ports = HashMap::new();
                         ports.insert(sidecar_port.clone(), HashMap::new());
