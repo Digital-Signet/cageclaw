@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import Dashboard from "./views/Dashboard";
 import NetworkView from "./views/NetworkView";
 import FilesView from "./views/FilesView";
@@ -6,11 +7,27 @@ import SettingsView from "./views/SettingsView";
 import AgentView from "./views/AgentView";
 import Sidebar from "./components/Sidebar";
 import BlockedToast from "./components/BlockedToast";
+import SetupWizard from "./components/SetupWizard";
 
 type View = "dashboard" | "agent" | "network" | "files" | "settings";
 
 function App() {
   const [activeView, setActiveView] = useState<View>("dashboard");
+  const [showSetup, setShowSetup] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    invoke<any>("get_config").then((config) => {
+      setShowSetup(!config.setup_completed);
+    }).catch(() => {
+      setShowSetup(true);
+    });
+  }, []);
+
+  if (showSetup === null) return null; // loading config
+
+  if (showSetup) {
+    return <SetupWizard onComplete={() => setShowSetup(false)} />;
+  }
 
   const renderView = () => {
     switch (activeView) {

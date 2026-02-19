@@ -5,6 +5,8 @@ const CONFIG_FILENAME: &str = "cageclaw.toml";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
+    #[serde(default)]
+    pub setup_completed: bool,
     pub openclaw_image: Option<String>,
     pub openclaw_tag: Option<String>,
     pub file_mounts: Vec<FileMount>,
@@ -61,6 +63,7 @@ pub const DENIED_PATHS: &[&str] = &[
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
+            setup_completed: false,
             openclaw_image: None,
             openclaw_tag: None,
             file_mounts: Vec::new(),
