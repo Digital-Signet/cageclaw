@@ -47,6 +47,7 @@ function BlockedToast({ onNavigate }: BlockedToastProps) {
       const config = await invoke<any>("get_config");
       config.allowed_domains.push({ pattern: host, allowed: true });
       await invoke("update_config", { config });
+      window.dispatchEvent(new CustomEvent("domain-allowed", { detail: host }));
       dismiss(id);
     } catch (e) {
       console.error("Failed to allow domain:", e);
