@@ -90,6 +90,16 @@ pub async fn update_config(
     state: State<'_, AppState>,
     config: AppConfig,
 ) -> Result<(), String> {
+    // Enforce deny list — reject configs that mount sensitive paths
+    for mount in &config.file_mounts {
+        if AppConfig::is_path_denied(&mount.host_path) {
+            return Err(format!(
+                "Mount blocked: '{}' matches a sensitive path in the deny list",
+                mount.host_path
+            ));
+        }
+    }
+
     // Sync domain allowlist to the running proxy in real time
     let mut domains = state.proxy_domains.write().await;
     *domains = config.allowed_domains.clone();

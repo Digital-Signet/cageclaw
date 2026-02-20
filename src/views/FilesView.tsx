@@ -17,11 +17,27 @@ interface AppConfig {
   resource_limits: { memory_mb: number | null; cpu_cores: number | null };
 }
 
+const DENIED_PATHS = [
+  ".ssh", ".aws", ".azure", ".gcp", ".config/gcloud", ".env", ".npmrc",
+  ".pypirc", ".docker/config.json", ".kube",
+  "AppData/Local/Google/Chrome", "AppData/Local/Microsoft/Edge",
+  "AppData/Roaming/Mozilla/Firefox", "AppData/Local/BraveSoftware",
+  "AppData/Roaming/1Password", "AppData/Local/1Password",
+  ".gnupg", ".pgpass", "ntuser.dat", ".credentials", ".netrc",
+];
+
+function isPathDenied(path: string): string | null {
+  const normalised = path.replace(/\\/g, "/").toLowerCase();
+  const match = DENIED_PATHS.find((d) => normalised.includes(d.toLowerCase()));
+  return match ? match : null;
+}
+
 function FilesView() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [newPath, setNewPath] = useState("");
   const [newContainerPath, setNewContainerPath] = useState("/workspace");
   const [readOnly, setReadOnly] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadConfig();
@@ -38,6 +54,13 @@ function FilesView() {
 
   const addMount = async () => {
     if (!config || !newPath) return;
+    setError(null);
+
+    const denied = isPathDenied(newPath);
+    if (denied) {
+      setError(`Blocked: path contains '${denied}' which is on the sensitive path deny list.`);
+      return;
+    }
 
     const updated: AppConfig = {
       ...config,
@@ -58,7 +81,7 @@ function FilesView() {
       setNewPath("");
       setNewContainerPath("/workspace");
     } catch (e) {
-      console.error(e);
+      setError(String(e));
     }
   };
 
@@ -81,6 +104,22 @@ function FilesView() {
       <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 24 }}>
         File Mounts
       </h1>
+
+      {error && (
+        <div
+          style={{
+            background: "rgba(248, 113, 113, 0.1)",
+            border: "1px solid var(--danger)",
+            borderRadius: "var(--radius)",
+            padding: "12px 16px",
+            marginBottom: 16,
+            color: "var(--danger)",
+            fontSize: 13,
+          }}
+        >
+          {error}
+        </div>
+      )}
 
       <div
         style={{

@@ -253,6 +253,7 @@ impl DockerRuntime {
             mounts: Some(mounts),
             cap_drop: Some(vec!["ALL".to_string()]),
             security_opt: Some(vec!["no-new-privileges:true".to_string()]),
+            readonly_rootfs: Some(true),
             memory: config.resource_limits.memory_mb.map(|mb| mb * 1024 * 1024),
             nano_cpus: config
                 .resource_limits
@@ -274,6 +275,8 @@ impl DockerRuntime {
         env.push(format!("HTTPS_PROXY={}", proxy_url));
         env.push(format!("http_proxy={}", proxy_url));
         env.push(format!("https_proxy={}", proxy_url));
+        env.push("NO_PROXY=127.0.0.1,localhost".to_string());
+        env.push("no_proxy=127.0.0.1,localhost".to_string());
 
         self.client
             .create_container(
@@ -283,6 +286,7 @@ impl DockerRuntime {
                 }),
                 Config {
                     image: Some(image),
+                    user: Some("1000:1000".to_string()),
                     cmd: Some(vec![
                         "sh".to_string(),
                         "-c".to_string(),
@@ -292,6 +296,26 @@ impl DockerRuntime {
                                 " printf '{{\"gateway\":{{\"auth\":{{\"mode\":\"token\",",
                                 "\"token\":\"{tok}\"}},\"bind\":\"loopback\"}}}}' ",
                                 " > /home/node/.openclaw/openclaw.json &&",
+                                " cat > /home/node/CLAUDE.md << 'CLEOF'\n",
+                                "# CageClaw Sandboxed Environment\n",
+                                "\n",
+                                "You are running inside a CageClaw sandbox container with network isolation.\n",
+                                "\n",
+                                "## Network rules\n",
+                                "\n",
+                                "- **DNS does not work** inside this container. This is by design — do not attempt to diagnose or fix DNS.\n",
+                                "- All HTTP/HTTPS traffic is routed through an HTTP proxy that handles DNS resolution on the host.\n",
+                                "- The proxy enforces a domain allowlist. If a domain is not on the list, the request will be blocked.\n",
+                                "- When a request is blocked, the user is notified via the CageClaw UI and can allow the domain with one click.\n",
+                                "- Once a domain is allowed, you will be told to retry. Just retry the request — it will work.\n",
+                                "\n",
+                                "## What NOT to do\n",
+                                "\n",
+                                "- Do not try to fix networking, DNS, or proxy issues.\n",
+                                "- Do not suggest restarting Docker, WSL, or network services.\n",
+                                "- Do not use `ping`, `nslookup`, `dig`, or direct socket connections to diagnose connectivity.\n",
+                                "- If a request fails with a connection error, it is most likely a blocked domain — just tell the user which domain you need.\n",
+                                "CLEOF\n",
                                 " node openclaw.mjs gateway --allow-unconfigured",
                                 " --token {tok} &",
                                 " sleep 2 &&",
